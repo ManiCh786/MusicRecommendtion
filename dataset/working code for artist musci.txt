@@ -1,0 +1,113 @@
+from tabulate import tabulate
+def load_dataset(file_path):
+    """
+    Loads the dataset and constructs two dictionaries: artist_music and music_features.
+
+    Parameters:
+        file_path (str): Path to the CSV file.
+
+    Returns:
+        tuple: artist_music (dict), music_features (dict)
+    """
+    # Initialize the dictionaries
+    artist_music = {}
+    music_features = {}
+
+    # Open and read the file
+    with open(file_path, 'r', encoding='utf-8') as file:
+        # Read the header line
+        header = file.readline().strip().split(',')
+
+        # Find column indices
+        columns = {
+            "artists": header.index("artists"),
+            "name": header.index("name"),
+            "id": header.index("id"),
+            "valence": header.index("valence"),
+            "acousticness": header.index("acousticness"),
+            "danceability": header.index("danceability"),
+            "energy": header.index("energy"),
+            "liveness": header.index("liveness"),
+            "loudness": header.index("loudness"),
+            "popularity": header.index("popularity"),
+            "speechiness": header.index("speechiness"),
+            "tempo": header.index("tempo"),
+        }
+
+        # Process each line
+        for line in file:
+            # Split line into values, accounting for potential commas inside quotes
+            values = []
+            current = ""
+            in_quotes = False
+            for char in line:
+                if char == '"' and not in_quotes:
+                    in_quotes = True
+                elif char == '"' and in_quotes:
+                    in_quotes = False
+                elif char == ',' and not in_quotes:
+                    values.append(current.strip())
+                    current = ""
+                else:
+                    current += char
+            values.append(current.strip())  # Add the last value
+
+            # Parse the artists column
+            raw_artists = values[columns["artists"]]
+            artists = raw_artists.strip('[]"').split("', '")
+
+            # Parse other fields
+            track_name = values[columns["name"]]
+            track_id = values[columns["id"]]
+
+            try:
+                # Parse features, handling potential errors
+                features = {
+                    "valence": float(values[columns["valence"]].strip()),
+                    "acousticness": float(values[columns["acousticness"]].strip()),
+                    "danceability": float(values[columns["danceability"]].strip()),
+                    "energy": float(values[columns["energy"]].strip()),
+                    "liveness": float(values[columns["liveness"]].strip()),
+                    "loudness": float(values[columns["loudness"]].strip()),
+                    "popularity": int(values[columns["popularity"]].strip()),
+                    "speechiness": float(values[columns["speechiness"]].strip()),
+                    "tempo": float(values[columns["tempo"]].strip()),
+                }
+            except ValueError as e:
+                # Skip rows with invalid numeric data
+                print(f"Error parsing features for track ID {track_id}: {e}")
+                continue
+
+            # Populate artist_music dictionary
+            for artist in artists:
+                if artist not in artist_music:
+                    artist_music[artist] = []
+                artist_music[artist].append({
+                    "name": track_name,
+                    "features": features,
+                })
+
+            # Populate music_features dictionary
+            music_features[track_id] = features
+            
+    return artist_music, music_features
+
+# # Example usage
+# file_path = '/mnt/data/example.csv'
+# artist_music, music_features = load_dataset(file_path)
+
+# # Display sample results
+# print("Sample artist_music entry:", list(artist_music.items())[:1])
+# print("\nSample music_features entry:", list(music_features.items())[:1])
+
+file_path = 'dataset/example.csv'
+artist_music, music_features = load_dataset(file_path)
+
+# Display sample results
+# Convert dictionary to table
+table = tabulate(artist_music, headers="keys", tablefmt="pretty")
+print(table)
+table2=tabulate(music_features,headers="keys",tablefmt="pretty")
+print(table2)
+# print("Sample artist_music entry:", list(artist_music.items())[:1])
+# print("\nSample music_features entry:", list(music_features.items())[:1])

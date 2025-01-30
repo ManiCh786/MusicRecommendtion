@@ -1,0 +1,140 @@
+def load_dataset(file_path, exampleg_file_path):
+    """
+    Loads the dataset and constructs two dictionaries: artist_music and music_features.
+    Updates the music_features dictionary by matching keys with the exampleg dataset.
+
+    Parameters:
+        file_path (str): Path to the CSV file (music data).
+        exampleg_file_path (str): Path to the exampleg dataset CSV file (genre and feature data).
+
+    Returns:
+        tuple: artist_music (dict), music_features (dict)
+    """
+    # Initialize the dictionaries
+    artist_music = {}
+    music_features = {}
+
+    # Open and read the genre dataset (exampleg.csv)
+    exampleg_data = {}
+    with open(exampleg_file_path, 'r', encoding='utf-8') as exampleg_file:
+        # Read header
+        exampleg_header = exampleg_file.readline().strip().split(',')
+        
+        # Map columns from the genre file to easier access
+        exampleg_columns = {
+            "key": exampleg_header.index("key"),
+            "genres": exampleg_header.index("genres"),
+            "acousticness": exampleg_header.index("acousticness"),
+            "danceability": exampleg_header.index("danceability"),
+            "duration_ms": exampleg_header.index("duration_ms"),
+            "energy": exampleg_header.index("energy"),
+            "instrumentalness": exampleg_header.index("instrumentalness"),
+            "liveness": exampleg_header.index("liveness"),
+            "loudness": exampleg_header.index("loudness"),
+            "speechiness": exampleg_header.index("speechiness"),
+            "tempo": exampleg_header.index("tempo"),
+            "valence": exampleg_header.index("valence"),
+            "popularity": exampleg_header.index("popularity"),
+            "mode": exampleg_header.index("mode"),
+        }
+
+        # Read each line in the exampleg file and store the features
+        for line in exampleg_file:
+            values = line.strip().split(',')
+            track_key = values[exampleg_columns["key"]]
+
+            # Safe conversion of features
+            def safe_convert(value, default=0.0):
+                try:
+                    # Try converting to float, if it fails use default
+                    return float(value) if value.strip() != '' else default
+                except ValueError:
+                    return default
+
+            # Store features from exampleg dataset with safe conversion
+            exampleg_data[track_key] = {
+                'genres': values[exampleg_columns["genres"]].split(", ") if values[exampleg_columns["genres"]] else [],
+                'mode': values[exampleg_columns["mode"]],
+                'acousticness': safe_convert(values[exampleg_columns["acousticness"]]),
+                'danceability': safe_convert(values[exampleg_columns["danceability"]]),
+                'duration_ms': safe_convert(values[exampleg_columns["duration_ms"]]),
+                'energy': safe_convert(values[exampleg_columns["energy"]]),
+                'instrumentalness': safe_convert(values[exampleg_columns["instrumentalness"]]),
+                'liveness': safe_convert(values[exampleg_columns["liveness"]]),
+                'loudness': safe_convert(values[exampleg_columns["loudness"]]),
+                'speechiness': safe_convert(values[exampleg_columns["speechiness"]]),
+                'tempo': safe_convert(values[exampleg_columns["tempo"]]),
+                'valence': safe_convert(values[exampleg_columns["valence"]]),
+                'popularity': safe_convert(values[exampleg_columns["popularity"]]),
+                'key': track_key
+            }
+
+    # Open and read the music data (example dataset)
+    with open(file_path, 'r', encoding='utf-8') as file:
+        # Read header
+        header = file.readline().strip().split(',')
+        
+        # Map columns from the music file
+        columns = {
+            "artists": header.index("artists"),
+            "name": header.index("name"),
+            "id": header.index("id"),
+            "key": header.index("key"),
+        }
+
+        # Process each line
+        for line in file:
+            values = line.strip().split(',')
+            track_name = values[columns["name"]]
+            track_id = values[columns["id"]]
+            track_key = values[columns["key"]]
+            raw_artists = values[columns["artists"]]
+            artists = raw_artists.strip('[]"').split("', '")
+
+            # Fetch the music features from exampleg dataset based on the key
+            genre_info = exampleg_data.get(track_key, {})
+
+            # Populate music features
+            features = {
+                'genres': genre_info.get('genres', []),
+                'mode': genre_info.get('mode', None),
+                'acousticness': genre_info.get('acousticness', 0.0),
+                'danceability': genre_info.get('danceability', 0.0),
+                'duration_ms': genre_info.get('duration_ms', 0.0),
+                'energy': genre_info.get('energy', 0.0),
+                'instrumentalness': genre_info.get('instrumentalness', 0.0),
+                'liveness': genre_info.get('liveness', 0.0),
+                'loudness': genre_info.get('loudness', 0.0),
+                'speechiness': genre_info.get('speechiness', 0.0),
+                'tempo': genre_info.get('tempo', 0.0),
+                'valence': genre_info.get('valence', 0.0),
+                'popularity': genre_info.get('popularity', 0.0),
+                'key': genre_info.get('key', None)
+            }
+
+            # Adding track data to the artist_music dictionary (keeping it unchanged)
+            for artist in artists:
+                if artist not in artist_music:
+                    artist_music[artist] = []
+                artist_music[artist].append({
+                    "name": track_name,
+                    "features": features,
+                })
+
+            # Populate the music features dictionary
+            music_features[track_id] = features
+
+    return artist_music, music_features
+
+# Example usage
+file_path = 'dataset/example.csv'  # Path to the music dataset
+exampleg_file_path = 'dataset/exampleg.csv'  # Path to the music genre dataset
+
+artist_music, music_features = load_dataset(file_path, exampleg_file_path)
+
+# Display the updated music_features dictionary (example)
+from tabulate import tabulate
+
+music_features_table = tabulate(music_features.items(), headers=["Track ID", "Features"], tablefmt="pretty")
+print("\nMusic Features Table:")
+print(music_features_table)
